@@ -1,0 +1,13 @@
+---
+
+- name: move script to host
+  copy:
+    src: "{{ role_path }}/files/remove_targeted_home_files.sh"
+    dest: /usr/local/bin/remove_targeted_home_files.sh
+- name: cronjob everday at 0300
+  cron:
+    name: Remove targeted home files
+    minute: "0"
+    hour: "2"
+    user: root
+    cron_file: remove_targeted_home_files

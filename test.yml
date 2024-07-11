@@ -1,0 +1,19 @@
+---
+- hosts: all
+
+  tasks:
+  - name: cURL GPG key
+    uri:
+      url: 'https://satellite02.regsj.intern/katello/api/v2/content_credentials/7/content'
+      force_basic_auth: true
+      method: GET
+      user: apiinventory
+      password: UByfrQiI6EMf70u_Z5gkrA
+      validate_certs: false
+      return_content: true
+      dest: ~/tmp/RPM-GPG-KEY-tenable-nessus.gpg
+    register: result
+
+  - name: debug
+    debug:
+      msg: "{{ result.content }}"

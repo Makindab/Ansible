@@ -1,0 +1,91 @@
+---
+- hosts: all
+  become: true
+  gather_facts: true
+  gather_subset:
+    - "!all"
+    - "!min"
+    - "default_ipv4"
+  vars:
+    - agent_group: "linux servers"
+    - agent_port: 8840
+    - agent_path: /opt/nessus_agent/sbin/nessuscli
+    - agent_file_src: http://satellite02.regsj.intern/pulp/content/RegionSJ/Library/custom/Tenable_Nessus_Agent/Tenable_Nessus_Agent/Packages/n/NessusAgent-10.6.4-el9.x86_64.rpm
+    - agent_file_dest: /tmp/NessusAgent-10.6.4-el8.x86_64.rpm
+
+    - RDC2:
+        network_range: ['10.140.*']
+        nessus_keys: 87da824203a0c7761bf6910154c0d4df0261f391513cfac4163ffef54a580115
+        agent_host: sv25488.regsj.intern
+
+    - RDC3:
+        network_range: ['10.142.*', '10.240.*']
+        nessus_keys: 2a13919682dfdf17bb8273c8438b680082ac63cb1ad2cf27342bb2907ae3adbc
+        agent_host: sv25651.regsj.intern
+
+    - SLSDC:
+        network_range: ['10.40.*']
+        nessus_keys: 6e06e80d70c0406f471e4c35a48b2ff6fd9eb2cd4cb2ce3a74687c5026c498f1
+        agent_host: sv25648.regsj.intern
+
+    - DMZ:
+        network_range: ['10.24.*', '10.250.*']
+        nessus_keys: e3b423d6bcbb6d505ba25ff935d42be2dc6121fc463d983193a1b069f68aa22d
+        agent_host: sv25650.regsj.intern
+
+  tasks:
+    - name: Host IP matching criteria RDC2
+      set_fact:
+        rdc2_host_ip: "{{ ansible_facts.default_ipv4.address }}"
+        datacenter: "{{ RDC2 }}"
+      when: ansible_facts.default_ipv4.address.startswith('10.140.')
+
+    - name: Host IP matching criteria RDC3
+      set_fact:
+        rdc3_host_ip: "{{ ansible_facts.defualt_ipv4.address }}"
+        datacenter: "{{ RDC3 }}"
+      when: (ansible_facts.default_ipv4.address.startswith('10.142.')) or
+            (ansible_facts.default_ipv4.address.startswith('10.240.'))
+
+    - name: Host IP matching criteria SLSDC
+      set_fact:
+        slsdc_host_ip: "{{ ansible_facts.default_ipv4.address }}"
+        datacenter: "{{ SLSDC }}"
+      when: ansible_facts.default_ipv4.address.startswith('10.40.')
+
+    - name: Host IP matching criteria DMZ
+      set_fact:
+        dmz_host_ip: "{{ ansible_facts.default_ipv4.address }}"
+        datacenter: "{{ DMZ }}"
+      when: (ansible_facts.default_ipv4.address.startswith('10.24.')) or
+            (ansible_facts.default_ipv4.address.startswith('10.250.'))
+
+    # Check agent link status
+    - name: Check link status
+      shell: "{{ agent_path }} agent status; true"
+      register: nessus_link_status
+
+    # Check agent service status
+
+    - name: Check Nessus Agent Service Status
+      shell: service nessusagent status; true
+      register: nessus_agent_service_status
+
+    # Copy rpm file from source to server/s
+
+    - name: Copy rpm file to server
+      ansible.builtin.get_url:
+        url: "{{ agent_file_src }}"
+        dest: "{{ agent_file_dest }}"
+        
+    # Install the tyrant agent
+
+    - name: Install Tenable Agent
+      yum:
+        name: "{{ agent_file_dest }}"
+        state: present
+      when: "'Linked to: agent_host' not in nessus_link_status.stdout"
+
+    - name: test
+      shell: "{{ agent_path }} agent link --host={{ datacenter.agent_host }} --port={{ agent_port }} --key={{ datacenter.nessus_keys }} --groups={{ agent_group }}"
+      when: "'Linked to: agent_host' not in nessus_link_status.stdout"

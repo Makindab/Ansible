@@ -1,6 +1,7 @@
 [testserver]
 petchr-test.regsj.intern
 
+#[splocal]
 #spn4cch408.sp.local
 #spnoradb402.sp.local
 #spn2sbint2t001.sp.local

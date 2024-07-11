@@ -1,0 +1,45 @@
+---
+- hosts: all
+  become: false
+  gather_facts: true
+  gather_subset:
+    - "!all"
+    - "!min"
+    - "default_ipv4"
+  vars:
+    rdc2:
+      network_range: 10.140.*
+      nessus_keys: 87da824203a0c7761bf6910154c0d4df0261f391513cfac4163ffef54a580115
+      agent_host: sv25488.regsj.intern
+  
+  tasks:
+    
+  - name: Host IP matching criteria RDC2
+    set_fact:
+      rdc2_host_ip: "{{ ansible_facts.default_ipv4.address }}"
+    when: ansible_facts.default_ipv4.address.startswith('10.140.')
+      
+  - name: Host IP matching criteria RDC3
+    set_fact:
+      rdc3_host_ip: "{{ ansible_facts.defualt_ipv4.address }}"
+    when: (ansible_facts.default_ipv4.address.startswith('10.142.')) or
+          (ansible_facts.default_ipv4.address.startswith('10.240.'))
+
+  - name: Host IP matching criteria SLSDC
+    set_fact:
+      slsdc_host_ip: "{{ ansible_facts.default_ipv4.address }}"      
+    when: ansible_facts.default_ipv4.address.startswith('10.40.')
+  
+  - name: Host IP matching criteria DMZ
+    set_fact:
+      dmz_host_ip: "{{ ansible_facts.default_ipv4.address }}"
+    when: (ansible_facts.default_ipv4.address.startswith('10.24.')) or
+          (ansible_facts.default_ipv4.address.startswith('10.250.'))
+
+  - name: loop test
+  #include_tasks: tyrant.yml
+    ansible.builtin.debug:
+      var: rdc2_host_ip
+     
+    when: (rdc2_host_ip is defined) and 
+          (rdc2_host_ip is match rdc2.network_range)

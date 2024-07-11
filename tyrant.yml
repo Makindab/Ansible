@@ -1,0 +1,43 @@
+---
+
+# Check agent link status
+
+- name: Check link status
+  shell: "{{ agent_path }} agent status; true"
+  register: nessus_link_status
+  
+  # Check agent service status
+
+- name: Check Nessus Agent Service Status
+  shell: service nessusagent status; true
+  register: nessus_agent_service_status
+  
+  # Copy rpm file from source to server/s  
+
+- name: Copy rpm file to server
+  copy:
+    src: "{{ agent_file_src }}"
+    dest: "{{ agent_file_dest }}"
+  
+  # Install the tyrant agent 
+
+- name: Install Tenable Agent
+  yum:
+    name: "{{ agent_file_dest }}"
+    state: present
+  when: "'Linked to: agent_host' not in nessus_link_status.stdout"
+  
+  # Link agent to agent host
+
+- name: Link nessus agent to tenable
+  shell: "{{ agent_path }} agent link --host={{ agent_host }} --port={{ agent_port }} --key={{ nessus_keys }} --groups={{ agent_group }}"
+  when: "'Linked to: agent_host' not in nessus_link_status.stdout"
+
+  # Set agent performance limits
+
+- name: Performance limiting agent
+  shell: |
+    {{ agent_path }} fix --set scan_performance_mode="low"
+    {{ agent_path }} fix --set plugin_load_performance_mode="low"
+    {{ agent_path }} fix --set process_priority="low"
+  when: "'yes' in nessus_link_status.stdout" 
